@@ -1,0 +1,79 @@
+#sign-in-box{
+ display: flex;
+ justify-content: center;
+ align-items: center;
+ height: 100vh;
+ background-color:black;
+}
+#in-form{
+    display: flex;
+    flex-direction: column;
+    background-color: rgb(58, 55, 73);
+    padding:60px 20px 60px 20px;
+    height: 500px;
+    width: 400px;
+    gap: 10px;
+    border-radius: 15px;
+}
+#name,#mobile,#enter-passward,#confirm-pass{
+    font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+    font-size: 20px;
+}
+#enter-name input,#input-pass input,#input-confirm-pass input{
+    width: 400px;
+    height:30px;
+    border-radius: 3px;
+    background-color: rgb(176, 178, 178);
+}
+button{
+    text-align: center;
+    width: 100%;
+}
+#otp-button{
+    display: flex;
+    justify-content: flex-start;
+    gap: 5px;
+
+}
+#otp input,#enter-mobile input{
+    height: 30px;
+    width: 250px;
+    background-color: rgb(176, 178, 178);
+}
+#input-mobile-send-button{
+    display: flex;
+    justify-content: flex-start;
+    gap: 5px;
+}
+#check-button button,#send-button button{
+    height: 33px;
+    width: 60px;
+    background-color: rgb(80, 36, 36);
+    
+
+}
+#sign-in-button{
+    text-align: center;
+    width: 100%;
+    margin-top: 23px;
+
+}
+#sign-in-button button{
+    width: 100px;
+    height: 35px;
+    border-radius: 10px;
+    border: none;
+    background-color: rgb(28, 16, 37);
+    color: white;
+}
+#sign-in-button button:hover{
+    transform: scale(1.05);
+    cursor: pointer;
+}
+#check-button button:hover,#send-button button:hover{
+    background-color: rgb(173, 140, 143);
+    cursor: pointer;
+}
+
+
+

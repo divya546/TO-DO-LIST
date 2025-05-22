@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<link rel="stylesheet" href="todo.css">
+<body>
+    <div id="outer-cover"> 
+        
+        <div id="search-button">
+            
+             <div id="search"><input id="add-todo" type="text" placeholder="Add a todo."></div>
+            <div id="button"><button  onclick="addToDo()" id="add-button">Add</button></div>
+            
+        </div>
+        <div id="task-box">
+            <div id="tasks"></div>
+        </div>
+    </div>
+
+</body>
+<script>
+    let isEditing = false;
+    let editId= null;
+    window.onload= function(){
+        const token = localStorage.getItem('token');
+        if(!token){
+            alert("Session expired, login again.")
+            window.location.href="login.html";
+        }
+        fetch("http://localhost:3000/getTodo",{
+            method:"GET",
+            headers:{
+                'content-type':'application/json',
+                'authorization':`bearer ${token}`
+            }
+        }).then(response=>response.json()).then(
+            (data)=>{
+                if(data.todos && Array.isArray(data.todos)){
+                    data.todos.forEach(element => {
+                        divTodo(element,token)
+                    });
+                }else{
+                    alert("No todos exists.")
+                }  
+            }).catch(err=>{
+                console.log(err);
+                alert(err);
+            })
+    }
+    function renderIds(){
+        isEditing=false;
+        editId=null;
+        document.getElementById("add-todo")="";
+    }
+     function addToDo(){
+        const newtodo={
+            id:"todo-"+Date.now(),
+            text:document.getElementById("add-todo").value
+        }
+        if (newtodo.text.trim() === "") {
+         alert("Please enter a valid todo.");
+         return;
+          }
+        const token = localStorage.getItem('token');
+        if(!token){
+            alert("Session expired ,Redirecting to login page!") 
+            setTimeout(()=>{
+                window.location.href='login.html'},10000);
+            return;
+        }
+        if(isEditing && editId){
+            fetch("http://localhost:3000/edit",{
+                method:'PUT',
+                headers:{
+                    'Content-type':'application/json',
+                    'authorization':`Bearer ${token}`
+                },
+                body:JSON.stringify({id:editId,text:newtodo.text})
+            }).then(
+                res=>{if(!res.ok){
+                    throw new Error("Failed to add todo")
+                }
+                     return res.json()
+                }).then(
+                    (data)=>{
+                        if(data.message=="successfully updated"){
+                            const updatedTodo = document.getElementById(editId);
+                            updatedTodo.querySelector('.new-todo').innerText=newtodo.text;
+                            alert("Todo successfully updated.")
+                            document.getElementById("add-todo").value="";
+
+                        }else{
+                            alert("Todo not updated");
+                        }
+                        renderIds();
+                    }
+                ).catch(
+                    error=>{
+                        console.log("Error in updating");
+                    })
+                    const button = document.getElementById("add-button");
+                    button.innerText="Add";
+                    return ;
+        }
+        fetch("http://localhost:3000/addToDo",{
+            method:'POST',
+            headers:{
+              'Content-Type':'application/json',
+              'authorization':`Bearer ${token}`,
+            },
+            body:JSON.stringify(newtodo),
+
+            }).then(response=>response.json())
+            .then(data=>{
+               if(data.message=="Successfully added"){
+                divTodo(newtodo,token);
+                document.getElementById("add-button").value="";
+               }else{
+                alert(data.message);
+               }
+            })
+     }
+     function divTodo(newtodo,token){
+        const newElementBox= document.createElement("div");
+        
+        const newElement=document.createElement("div");
+        const deleteButton=document.createElement("button");
+        deleteButton.className="delete-button";
+        const edit =document.createElement("button");
+        edit.className="edit-todo";
+        deleteButton.innerText="Delete";
+        edit.innerText="Edit";
+        newElement.innerText=newtodo.text;
+        newElement.className="new-todo";
+        newElementBox.appendChild(newElement);
+        newElementBox.appendChild(deleteButton);
+        newElementBox.appendChild(edit);
+        const getBody = document.getElementById("tasks");
+        getBody.appendChild(newElementBox);
+        newElementBox.className="added-todos";
+        newElementBox.id=newtodo.id;
+        deleteButton.addEventListener('click',()=>{
+           deleteToDo(newtodo.id,token);
+        })
+        edit.addEventListener('click',()=>{
+            editTodo(newtodo.id,token);
+        })
+    }
+        function editTodo(todoCounter,token){
+            const todoBox=document.getElementById(todoCounter);
+            const val=todoBox.querySelector('.new-todo').innerText;
+            const adding=document.getElementById("add-todo");
+            adding.value=val;
+            isEditing = true;
+            editId = todoCounter;
+            const updateButton = document.getElementById("add-button");
+            if(updateButton){
+                updateButton.textContent="Update todo";
+            }
+            
+        }    
+
+
+        function deleteToDo(todoCounter,token){
+            const todoToBeDeleted= document.getElementById(todoCounter);
+            todoToBeDeleted.remove();
+            fetch("http://localhost:3000/delete",{
+                method:"DELETE",
+                headers:{
+                    'Content-type':'application/json',
+                    'authorization':`bearer ${token}`
+                },
+                body:JSON.stringify({
+                    id:todoCounter
+                })
+            }).then(
+                alert("Successfully deleted")
+            ).catch(err => {
+            alert("Error deleting todo: " + err);
+        });
+
+        
+     }
+
+</script>
+</html>

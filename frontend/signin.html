@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<link rel="stylesheet" href="signin.css">
+<body>
+    
+    <div id="sign-in-box">
+    <div id="in-form">
+        <div id="name">Name</div>
+        <div id="enter-name"><input id ="name-input" type="text" placeholder="Enter your name" required></div>
+        <div id="mobile">Email Id:</div>
+        <div id="input-mobile-send-button">
+            <div id="enter-mobile"><input id="email-input" type="email" placeholder="Enter your email address (eg. abc@gmail.com)" required></div>
+            <div id="send-button"><button id ="send-otp-button">Send</button></div>
+        </div>
+        <div id="otp-button">
+            <div id="otp"><input id="otp-input" type="text" placeholder="Enter otp"></div>
+            <div id="check-button"><button id ="check-otp-button">Check</button></div>
+            </div>
+        <div id="Mytimer" style="font-weight: bold; color: red; margin-top: 10px;"></div>
+        <div id="enter-passward">Enter Passward</div>
+        <div id="input-pass"><input id="input-password" type="password" placeholder="set a passward eg.d34fghy6&$" required></div>
+        <div id="confirm-pass">Enter confirm passward</div>
+        <div id="input-confirm-pass"><input id ="confirm" type="password" placeholder="Re-enter your passward"></div>
+        <div id="sign-in-button"><button onclick="signin()">Sign IN</button></div>
+        <div id="already-sign-in">Already sign in? <a href="index.html">login</a></div>
+    </div>
+
+    </div>
+</body>
+<script>
+    const btn = document.getElementById("check-otp-button");
+    const timer = document.getElementById("Mytimer");
+    let setTimer;
+    btn.disabled= true;
+  function signin(){
+    const name = document.getElementById("name-input").value;
+    const email = document.getElementById('email-input').value;
+   if(!(name.trim()) || !email){
+    return alert("Enter name and email.")
+   }
+    const password=document.getElementById('input-password').value;
+    if(password.length < 8){
+    return alert("Password must be at least 8 characters.");
+}
+if(!/[A-Z]/.test(password)){
+    return alert("Password must contain at least one uppercase letter.");
+}
+if(!/[!@#$%^&*(),.?":{}|<>]/.test(password)){
+    return alert("Password must contain at least one special character.");
+}
+
+    const confirmPass=document.getElementById('confirm').value;
+    if(password !== confirmPass){
+        return alert("confirm password does not match");
+    }
+    fetch('http://localhost:3000/register',{
+        method:'POST',
+        headers:{
+             'Content-Type':'application/json'
+        },
+        body:JSON.stringify({name,email,password})
+    }).then(response=>response.json())
+    .then((data)=>{
+           alert(data.message);
+          if(data.message=="Successfully Registered!"){
+            window.location.href="login.html"
+          }
+        })
+        .catch(error=>alert(error));
+     }
+    document.getElementById("send-otp-button").addEventListener('click',()=>{
+        const email= document.getElementById('email-input').value;
+        if(!email.trim()){
+           return alert("Please enter your email address.");
+        }
+        fetch("http://localhost:3000/send-otp",{
+            method:'post',
+            headers:{
+                'content-type':'application/json'
+            },
+            body:JSON.stringify({email:email})
+        }).then(res=>res.json()).then(data=>{alert(data.message);
+            setTimerfunct();
+        }).catch(error=>{
+            alert("Failed to send otp");
+
+            console.error(error);
+        }).finally(()=>{
+           btn.disabled= false;
+           
+        })
+    })
+    document.getElementById("check-otp-button").addEventListener('click',()=>{
+        const email = document.getElementById('email-input').value;
+        const otp = document.getElementById('otp-input').value;
+        if(!otp || !email){
+            return alert("Please enter otp and Email.");
+        }
+        fetch("http://localhost:3000/verify-otp",{
+            method:'POST',
+            headers:{
+                'content-type':'application/json'
+            },
+            body:JSON.stringify({email,otp})
+        }).then(res=>res.json()).then(data=>{
+            if(data.message="OTP is correct"){
+            clearInterval(setTimer); // ✅ STOP THE TIMER here
+            timer.innerText = "";
+        }
+            return alert(data.message) // ✅ Optional: Clear timer text after successful OTP
+        }).catch(error=>{
+            alert("Please enter the valid otp");
+            console.error(error);
+        })
+    })
+    function setTimerfunct(){
+        let time = 5*60;//in seconds
+        clearInterval(setTimer);
+        setTimer = setInterval(()=>{
+            if(time<=0){
+                timer.innerText="Otp is expired."
+                clearInterval(setTimer);
+            }
+            else{
+                const min = Math.floor(time/60);
+                const sec =time%60;
+                timer.innerText=`Time left is ${min} : ${sec.toString().padStart(2,"0")}`;
+                time--;
+            }
+        },1000);
+    };
+</script>
+</html>
