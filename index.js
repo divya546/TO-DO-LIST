@@ -2,14 +2,18 @@
 const express = require('express');
 const fs = require('fs');
 const cors = require("cors");
+const mongoose= require("mongoose");
+const {UserModel,toDoModel}=require("./db");
 const { error } = require('console');
 const { parse } = require('path');
 const app = express();
 const jwt = require("jsonwebtoken");
 
 require('dotenv').config();
-const JWT_SECRET= "BEYOUROWNSELF";
+const JWT_SECRET= process.env.TOKEN;
 const nodemailer=require('nodemailer');
+mongoose.connect(process.env.MONGOOSE_URL);
+
 const transporter=nodemailer.createTransport({
        service:"gmail",
        auth: {
@@ -81,155 +85,157 @@ app.use(express.static('signin'));
     })
 
  })
- app.post('/register',(req,res)=>{
+ app.post('/register',async (req,res)=>{
     const name = req.body.name;
     const email = req.body.email;
     const password = req.body.password;
-    const rowData=fs.readFileSync("todo.json",'utf-8');
-    const users= rowData?JSON.parse(rowData):[];
-    const existingUser = users.find(u=>u.email===email && u.password===password);
-    if(existingUser){
-        return res.status(400).json({
-            message:"user is already registered"
-        });
-    }
-    users.push({name,email,password,todos:[]});
-    fs.writeFile("todo.json",JSON.stringify(users,null,2),(err)=>{
-    if(err){
-          return res.status(400).json({message:"Error in registering"})
-        }
-        res.status(200).json({
-        message:"Successfully Registered!"
-     }) 
+    const user = await UserModel.findOne({
+        email:email,
     })
+    if(user){
+        return res.status(300).json({
+            message:"User already exists"
+        })
+    }
+   try{ 
+     const customer =await UserModel.create({
+    email:email,
+    name:name,
+    password:password
+   })
+   
+     res.status(200).json({
+        message:"Successfully registered!"
+     })}
+    catch(error){
+        console.log(error);
+     res.status(400).json({
+        message:"Error in registering."
+     })
+    }
     
    
  })
- app.post('/login',(req,res)=>{
+ app.post('/login',async(req,res)=>{
     const email=req.body.email;
     const password = req.body.password;
-    const rowData = fs.readFileSync('todo.json','utf-8');
-    const users=rowData?JSON.parse(rowData):[];
-    const user= users.find(u=>u.email===email && u.password===password);
-    if(!user ){
-        return res.status(400).json({
-            message:"Invalid username or passward."
-        });
-    }
-    const token = jwt.sign({
+    const user = await UserModel.findOne({
         email:email,
-    },JWT_SECRET);
-    user.token= token;
-    fs.writeFileSync('todo.json',JSON.stringify(users,null,2));
-    res.json({
-        token:token,
-        
-    }) 
- })
- app.get("/getTodo",(req,res)=>{
+        password:password
+    })
+    try{if(user){
+        const token = jwt.sign({
+        id:user._id,
+        },JWT_SECRET);
+        res.status(200).json({
+            message:"Login Successfull",
+            token
+        })
+       }
+    else{
+        res.status(403).json({
+            message:"Incorrect credentials"
+        })
+    }}catch{
+        res.status(404).json({
+            message:"Login failed due to some issue."
+        })
+    }
+    
+    
+ }
+)
+ app.get("/getTodo",async(req,res)=>{
     const rawtoken = req.headers['authorization'];
     const token = rawtoken?.split(' ')[1];
-    const rowData = fs.readFileSync('todo.json','utf-8');
-    const usableData= rowData?JSON.parse(rowData):[];
-    const todo =usableData.find(u=>u.token===token);
-    if(!todo){
-        return res.status(400).json({
-            message:"Invalid token"
+    if (!token) {
+    return res.status(401).json({ message: "JWT token not provided" });
+  }
+    try{
+    const decoded = jwt.verify(token,JWT_SECRET);
+    const user = await UserModel.findById(decoded.id);
+    if(user){
+        const todos = await toDoModel.find({
+           userId:user._id
+        })
+        if(todos.length>0){
+            res.status(200).json({
+                todos:todos
+            })
+        }else{
+            res.status(200).json({
+                message:"No todos found"
+            })
+        }
+    }}catch(error){
+        console.log(error);
+        res.status(404).json({
+            message:"Some error in fetching the data"
         })
     }
-    if(todo){
-        return res.status(200).json({
-            todos:todo.todos
-        })
-    }
-    return res.status(200).json({
-        message:"No todos exist"
-    })
  })
- app.post('/addToDo',(req,res)=>{
-    const newTodo = req.body;
+ app.post('/addToDo',async(req,res)=>{
+    const {title} = req.body;
     const rawtoken = req.headers['authorization'];
      const token = rawtoken && rawtoken.startsWith("Bearer ") ? rawtoken.split(" ")[1] : rawtoken;
      
     let users;
-  try{
-    const data=fs.readFileSync('todo.json','utf-8');
-    users=JSON.parse(data);
-  }catch{
-    return res.status(400).json({
-        message:"Problem in reading file."
-    })
-  }
+  
   if(!token){
     return res.status(400).json({
         message:"No token provided. Login again!"
     })
   }
-  let decodedInfo;
   try{
-    decodedInfo= jwt.verify(token,JWT_SECRET);
-  } catch{
-    return res.status(400).json({
-        message:"Expired token."
-    })
-  }
-  const user = users.find(l=>l.mobile === decodedInfo.mobile);
-  if(!user){
-    return res.status(400).json({
-        message:"Invalid token, Log in again!"
-    })
-  }
-  if(!user.todos) user.todos=[];
-  user.todos.push(newTodo);
-  
-    try{
-        fs.writeFileSync("todo.json",JSON.stringify(users,null,2));
-        res.status(200).json({
-            message:"Successfully added"
+    const decoded = jwt.verify(token,JWT_SECRET);
+    if(decoded){
+        const todo =await toDoModel.create({
+              title:title,
+              done:false,
+              userId:decoded.id
         })
-    }catch{
-        res.status(400).json({
-            message:"Error in adding"
+        res.status(200).json({
+            message:"Successfully added",
+            todo:todo
+            
         })
     }
+  }catch(error){
+    console.log(error);
+    res.status(400).json({
+        message:"Error in adding todos"
+    })
+  }
+  
     
  })
- app.delete('/delete',(req,res)=>{
+ app.delete('/delete',async (req,res)=>{
      const id= req.body.id;
      const rawToken = req.headers['authorization'];
      const token =rawToken && rawToken.startsWith('bearer ')?rawToken.split(" ")[1]:rawToken;
     let decodedInfo;
-    try{
+      try{
         decodedInfo= jwt.verify(token,JWT_SECRET);
-    }catch{
-        return res.status(400).json({
-            message:"Invalid token."
+   
+     if(decodedInfo){
+        await toDoModel.deleteOne({
+            _id:id,
+            userId:decodedInfo.id
+        })
+        return res.status(200).json({
+            message:"Todo deleted successfully"
+        })
+     }
+    }catch(err){
+        console.log(err);
+        return res.status(404).json({
+            message:"Error in deleting"
         })
     }
-     fs.readFile('todo.json','utf-8',(err,data)=>{
-        if(err){
-            res.status(400).json({message: "Error in reading the file."})
-        }
-        let users = JSON.parse(data);
-        let user =users.find(e=>e.mobile ===decodedInfo.mobile);
-        if(!user){
-            return res.status(400).json({
-                message:"Invalid token."
-            })
-        }
-        user.todos= user.todos.filter(t=>t.id !==id);
-
-        fs.writeFile('todo.json',JSON.stringify(users,null,2),(err)=>{
-            if(err){
-                res.status(500).json({message:"Error in fetching internally"})
-            }
-            res.status(200).json({message:"Todo successfully deleted"});
-        })
-       
-     })
+     
  })
- app.put("/edit",(req,res)=>{
-    const text = req.body.text;
+ app.put("/edit",async(req,res)=>{
+    const {title} = req.body;
     const id = req.body.id;
     const rawToken= req.headers['authorization'];
     const token = rawToken && rawToken.toLowerCase().startsWith("bearer ")?rawToken.split(" ")[1]:rawToken;
@@ -239,49 +245,25 @@ app.use(express.static('signin'));
         })
     }
     let decodedInfo;
+    decodedInfo= jwt.verify(token,JWT_SECRET)
     try{
-        decodedInfo= jwt.verify(token,JWT_SECRET);
-    }catch{
+        console.log("Edited is called")
+        await toDoModel.updateOne(
+           { userId:decodedInfo.id,},
+           { $set:{title:title}}
+        )
+      return res.status(200).json({
+        message:"Updated successfully"
+      })
+
+    }catch(error){
+        console.log(error);
         return res.status(400).json({
-            message:"Expired token.Please login again."
+            message:"Error in updation."
         })
     }
-    fs.readFile("todo.json",'utf-8',(err,data)=>{
-        if(err){
-            return res.status(500).json({
-                message:"Error in reading file."
-            })
-        }let users = JSON.parse(data);
-       
-   
-        let user = users.find(e=>e.mobile ===decodedInfo.mobile);
-        if(!user){
-            return res.status(400).json({
-                message:"User of this token does not found!"
-            })
-        }
-
-    let todoTobeUpdated = user.todos.find(t=>t.id === id);
-    if(!todoTobeUpdated){
-        return res.status(404).json({
-            message:"Todo not found."
-        })
-    }
-    todoTobeUpdated.text=text;
-    fs.writeFile('todo.json',JSON.stringify(users,null,2),'utf-8',err=>{
-        if(err){
-            return res.status(500).json({
-                message:"Error in updating in file"
-            })
-        }return res.status(200).json({
-        message:"successfully updated"
-    })
-    })
     
- }); 
-
-
- })
+})
  app.listen(3000,()=>{
     console.log("App is running on http://localhost:3000");
  })

@@ -26,8 +26,8 @@
         <div id="input-pass"><input id="input-password" type="password" placeholder="set a passward eg.d34fghy6&$" required></div>
         <div id="confirm-pass">Enter confirm passward</div>
         <div id="input-confirm-pass"><input id ="confirm" type="password" placeholder="Re-enter your passward"></div>
-        <div id="sign-in-button"><button onclick="signin()">Sign IN</button></div>
-        <div id="already-sign-in">Already sign in? <a href="index.html">login</a></div>
+        <div id="sign-in-button"><button id ="sign-button" onclick="signin()" disabled>Sign IN</button></div>
+        <div id="already-sign-in">Already sign in? <a href="login.html">login</a></div>
     </div>
 
     </div>
@@ -68,6 +68,7 @@ if(!/[!@#$%^&*(),.?":{}|<>]/.test(password)){
     .then((data)=>{
            alert(data.message);
           if(data.message=="Successfully Registered!"){
+            
             window.location.href="login.html"
           }
         })
@@ -111,6 +112,7 @@ if(!/[!@#$%^&*(),.?":{}|<>]/.test(password)){
             if(data.message="OTP is correct"){
             clearInterval(setTimer); // ✅ STOP THE TIMER here
             timer.innerText = "";
+            document.getElementById("sign-button").disabled=false;
         }
             return alert(data.message) // ✅ Optional: Clear timer text after successful OTP
         }).catch(error=>{

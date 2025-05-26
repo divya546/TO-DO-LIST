@@ -34,12 +34,14 @@
             method:"GET",
             headers:{
                 'content-type':'application/json',
-                'authorization':`bearer ${token}`
+                'authorization':`Bearer ${token}`
             }
         }).then(response=>response.json()).then(
             (data)=>{
+                console.log(data);
                 if(data.todos && Array.isArray(data.todos)){
                     data.todos.forEach(element => {
+                        console.log(element);
                         divTodo(element,token)
                     });
                 }else{
@@ -53,14 +55,12 @@
     function renderIds(){
         isEditing=false;
         editId=null;
-        document.getElementById("add-todo")="";
+        document.getElementById("add-todo").value="";
     }
      function addToDo(){
-        const newtodo={
-            id:"todo-"+Date.now(),
-            text:document.getElementById("add-todo").value
-        }
-        if (newtodo.text.trim() === "") {
+        let newtodo;
+        const inputValue = document.getElementById("add-todo").value;
+        if (inputValue.trim() === "") {
          alert("Please enter a valid todo.");
          return;
           }
@@ -72,13 +72,21 @@
             return;
         }
         if(isEditing && editId){
+             newtodo={
+            id:editId,
+            title:document.getElementById("add-todo").value
+        }
+        if (newtodo.title.trim() === "") {
+         alert("Please enter a valid todo.");
+         return;
+          }
             fetch("http://localhost:3000/edit",{
                 method:'PUT',
                 headers:{
                     'Content-type':'application/json',
                     'authorization':`Bearer ${token}`
                 },
-                body:JSON.stringify({id:editId,text:newtodo.text})
+                body:JSON.stringify({id:editId,title:newtodo.title})
             }).then(
                 res=>{if(!res.ok){
                     throw new Error("Failed to add todo")
@@ -86,16 +94,16 @@
                      return res.json()
                 }).then(
                     (data)=>{
-                        if(data.message=="successfully updated"){
+                        if(data.message=="Updated successfully"){
                             const updatedTodo = document.getElementById(editId);
-                            updatedTodo.querySelector('.new-todo').innerText=newtodo.text;
+                            updatedTodo.querySelector('.new-todo').innerText=newtodo.title;
                             alert("Todo successfully updated.")
                             document.getElementById("add-todo").value="";
-
+                            renderIds();
                         }else{
                             alert("Todo not updated");
                         }
-                        renderIds();
+                        
                     }
                 ).catch(
                     error=>{
@@ -105,19 +113,20 @@
                     button.innerText="Add";
                     return ;
         }
+        
         fetch("http://localhost:3000/addToDo",{
             method:'POST',
             headers:{
               'Content-Type':'application/json',
               'authorization':`Bearer ${token}`,
             },
-            body:JSON.stringify(newtodo),
+            body:JSON.stringify({title:inputValue}),
 
             }).then(response=>response.json())
             .then(data=>{
                if(data.message=="Successfully added"){
-                divTodo(newtodo,token);
-                document.getElementById("add-button").value="";
+                divTodo(data.todo,token);
+                document.getElementById("add-todo").value="";
                }else{
                 alert(data.message);
                }
@@ -133,7 +142,7 @@
         edit.className="edit-todo";
         deleteButton.innerText="Delete";
         edit.innerText="Edit";
-        newElement.innerText=newtodo.text;
+        newElement.innerText=`${newtodo.title} `;
         newElement.className="new-todo";
         newElementBox.appendChild(newElement);
         newElementBox.appendChild(deleteButton);
@@ -141,14 +150,15 @@
         const getBody = document.getElementById("tasks");
         getBody.appendChild(newElementBox);
         newElementBox.className="added-todos";
-        newElementBox.id=newtodo.id;
+        newElementBox.id=newtodo._id;
+    
         deleteButton.addEventListener('click',()=>{
-           deleteToDo(newtodo.id,token);
+           deleteToDo(newtodo._id,token);
         })
         edit.addEventListener('click',()=>{
-            editTodo(newtodo.id,token);
+            editTodo(newtodo._id,token);
         })
-    }
+     }
         function editTodo(todoCounter,token){
             const todoBox=document.getElementById(todoCounter);
             const val=todoBox.querySelector('.new-todo').innerText;
@@ -176,7 +186,13 @@
                 body:JSON.stringify({
                     id:todoCounter
                 })
-            }).then(
+            }).then(res=>{
+                if(!res.ok){
+                    throw new Error("Failed to delete")
+                }else{
+                    return res.json();
+                }
+            }).then(data=>
                 alert("Successfully deleted")
             ).catch(err => {
             alert("Error deleting todo: " + err);
