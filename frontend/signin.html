@@ -86,7 +86,9 @@ if(!/[!@#$%^&*(),.?":{}|<>]/.test(password)){
             },
             body:JSON.stringify({email:email})
         }).then(res=>res.json()).then(data=>{alert(data.message);
+            if(data.message == "OTP Successfully sent!"){
             setTimerfunct();
+            }
         }).catch(error=>{
             alert("Failed to send otp");
 

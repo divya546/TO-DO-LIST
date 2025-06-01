@@ -8,10 +8,13 @@ const { error } = require('console');
 const { parse } = require('path');
 const app = express();
 const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
+const {z} = require("zod");
 
 require('dotenv').config();
 const JWT_SECRET= process.env.TOKEN;
 const nodemailer=require('nodemailer');
+const { string } = require('zod/v4');
 mongoose.connect(process.env.MONGOOSE_URL);
 
 const transporter=nodemailer.createTransport({
@@ -22,6 +25,7 @@ const transporter=nodemailer.createTransport({
        },
 
 })
+const otpVerified = false;
 const otpStore={};
 app.use(cors());
 app.use(express.json());
@@ -80,15 +84,19 @@ app.use(express.static('signin'));
         return res.status(400).json({
             message:"Incorrect OTP."
         })
-    }return res.status(200).json({
+    } otpVerified = true;
+    return res.status(200).json({
         message:"OTP is correct"
     })
 
  })
  app.post('/register',async (req,res)=>{
-    const name = req.body.name;
-    const email = req.body.email;
-    const password = req.body.password;
+    const reqBody = z.object({
+        email:z.string().min(6).email(),
+        password:z.string().min(6),
+        name:z.string()
+
+    })
     const user = await UserModel.findOne({
         email:email,
     })
@@ -97,12 +105,19 @@ app.use(express.static('signin'));
             message:"User already exists"
         })
     }
+    const hashedPassword = await bcrypt.hash(password,5);
    try{ 
+      if(otpVerified == true){
      const customer =await UserModel.create({
     email:email,
     name:name,
-    password:password
+    password:hashedPassword
    })
+      }else{
+        return res.status(400).json({
+            message:"Otp not verified ."
+        })
+      }
    
      res.status(200).json({
         message:"Successfully registered!"
@@ -121,9 +136,10 @@ app.use(express.static('signin'));
     const password = req.body.password;
     const user = await UserModel.findOne({
         email:email,
-        password:password
     })
-    try{if(user){
+    const passwordMatched = await bcrypt.compare(password,user.password);
+
+    try{if(passwordMatched){
         const token = jwt.sign({
         id:user._id,
         },JWT_SECRET);
