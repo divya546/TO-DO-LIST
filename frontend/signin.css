@@ -77,3 +77,8 @@ button{
 
 
 
+.error {
+  color: red;
+  font-size: 0.85rem;
+  margin-top: 5px;
+}

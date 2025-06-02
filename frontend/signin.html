@@ -12,9 +12,11 @@
     <div id="in-form">
         <div id="name">Name</div>
         <div id="enter-name"><input id ="name-input" type="text" placeholder="Enter your name" required></div>
+        <div id="invalid-name" class="error"></div>
         <div id="mobile">Email Id:</div>
         <div id="input-mobile-send-button">
             <div id="enter-mobile"><input id="email-input" type="email" placeholder="Enter your email address (eg. abc@gmail.com)" required></div>
+            <div id="invalid-email" class = "error"></div>
             <div id="send-button"><button id ="send-otp-button">Send</button></div>
         </div>
         <div id="otp-button">
@@ -24,6 +26,7 @@
         <div id="Mytimer" style="font-weight: bold; color: red; margin-top: 10px;"></div>
         <div id="enter-passward">Enter Passward</div>
         <div id="input-pass"><input id="input-password" type="password" placeholder="set a passward eg.d34fghy6&$" required></div>
+        <div id="invalid-password" class = "error"></div>
         <div id="confirm-pass">Enter confirm passward</div>
         <div id="input-confirm-pass"><input id ="confirm" type="password" placeholder="Re-enter your passward"></div>
         <div id="sign-in-button"><button id ="sign-button" onclick="signin()" disabled>Sign IN</button></div>
@@ -44,15 +47,18 @@
     return alert("Enter name and email.")
    }
     const password=document.getElementById('input-password').value;
+    document.getElementById("invalid-password").innerText="";
+    document.getElementById("invalid-email").innerText="";
+    document.getElementById("invalid-name").innerText="";
     if(password.length < 8){
     return alert("Password must be at least 8 characters.");
 }
-if(!/[A-Z]/.test(password)){
-    return alert("Password must contain at least one uppercase letter.");
-}
-if(!/[!@#$%^&*(),.?":{}|<>]/.test(password)){
-    return alert("Password must contain at least one special character.");
-}
+// if(!/[A-Z]/.test(password)){
+//     return alert("Password must contain at least one uppercase letter.");
+// }
+// if(!/[!@#$%^&*(),.?":{}|<>]/.test(password)){
+//     return alert("Password must contain at least one special character.");
+// }
 
     const confirmPass=document.getElementById('confirm').value;
     if(password !== confirmPass){
@@ -64,14 +70,30 @@ if(!/[!@#$%^&*(),.?":{}|<>]/.test(password)){
              'Content-Type':'application/json'
         },
         body:JSON.stringify({name,email,password})
-    }).then(response=>response.json())
-    .then((data)=>{
-           alert(data.message);
-          if(data.message=="Successfully Registered!"){
-            
-            window.location.href="login.html"
-          }
-        })
+    }).then(async(response)=>{
+         const data =await response.json();
+         if(response.status != 200){
+            if(data.error){
+                if(error.name){
+                    document.getElementById("invalid-name").innerText = error.name[0];
+                }else if(error.email){
+                    document.getElementById("invalid-email").innerText= error.email[0];
+                }else if(error.password){
+                    document.getElementById("invalid-password").innerText= error.password[0];
+                }else{
+                    cosnoe.log(data.message);
+                    alert("Unable to registered."); }
+            }return;
+         }
+         console.log(data.message);
+          if (data.message === "Successfully Registered!"){
+            window.location.href="login.html";
+          };
+         
+
+
+    })
+    
         .catch(error=>alert(error));
      }
     document.getElementById("send-otp-button").addEventListener('click',()=>{
@@ -85,7 +107,17 @@ if(!/[!@#$%^&*(),.?":{}|<>]/.test(password)){
                 'content-type':'application/json'
             },
             body:JSON.stringify({email:email})
-        }).then(res=>res.json()).then(data=>{alert(data.message);
+        }).then(async(response)=>{
+            const data = await response.json();
+            if(response.status!= 200){
+                if(data.error){
+                    if(data.error.email){
+                        document.getElementById("invalid-email").innerText=data.error.email[0];
+                    }
+                }
+            }
+            
+            alert(data.message);
             if(data.message == "OTP Successfully sent!"){
             setTimerfunct();
             }

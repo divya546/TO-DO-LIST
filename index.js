@@ -25,22 +25,33 @@ const transporter=nodemailer.createTransport({
        },
 
 })
-const otpVerified = false;
+const otpVerified ={};
 const otpStore={};
 app.use(cors());
 app.use(express.json());
 app.use(express.static('signin'));
    
  app.post('/send-otp',(req,res)=>{
-    const email= req.body.email;
-    if(!email){
+    
+    const zmail = z.object({
+        email:z.string().email()
+    })
+  const resultantEmail = zmail.safeParse(req.body);
+  if(!resultantEmail.success){
+    return res.status(422).json({
+        message:"Invalid format",
+        error:resultantEmail.error
+    })
+  }
+
+    if(!resultantEmail){
         return res.status(404).json({
             message:"Please enter the email."
         })
     }
     const otp =Math.floor(100000+Math.random()*900000);
     const expiresAt = Date.now()+300000;
-    
+    const email = resultantEmail.data.email;
     otpStore[email]={otp,expiresAt};
     const mailOptions={
         from:process.env.EMAIL_USER,
@@ -67,7 +78,7 @@ app.use(express.static('signin'));
             message:"Email or Otp not found.Please enter email and otp"
         })
     }
-    
+      otpVerified[email]= true;
      const otpData = otpStore[email];
      if(!otpData){
         return res.status(400).json({
@@ -84,7 +95,7 @@ app.use(express.static('signin'));
         return res.status(400).json({
             message:"Incorrect OTP."
         })
-    } otpVerified = true;
+    } 
     return res.status(200).json({
         message:"OTP is correct"
     })
@@ -92,44 +103,54 @@ app.use(express.static('signin'));
  })
  app.post('/register',async (req,res)=>{
     const reqBody = z.object({
-        email:z.string().min(6).email(),
-        password:z.string().min(6),
-        name:z.string()
+        email:z.string().min(6).email().max(100),
+        password:z.string().min(6).max(50).regex(/[A-Z]/,"Password should have atleast one Capital letter").
+        regex(/[a-z]/,"Password should constain atleast one small character.").
+        regex(/[^A-Za-z0-9]/,"Password should conatoion atleast one special character"),
+        name:z.string().max(100)
 
     })
-    const user = await UserModel.findOne({
-        email:email,
-    })
-    if(user){
-        return res.status(300).json({
-            message:"User already exists"
+    const parsedData = reqBody.safeParse(req.body);
+    if(!parsedData.success){
+        return res.status(400).json({
+            message:"Invalid format",
+            error: parsedData.error
         })
     }
-    const hashedPassword = await bcrypt.hash(password,5);
-   try{ 
-      if(otpVerified == true){
-     const customer =await UserModel.create({
-    email:email,
-    name:name,
-    password:hashedPassword
-   })
-      }else{
-        return res.status(400).json({
-            message:"Otp not verified ."
+    const {name ,email,password} = parsedData.data;
+    try{
+           const user = await UserModel.findOne({
+            email:email
+           })
+           if(user){
+            return res.status(409).json({
+                message:"User already exists."
+            })
+           }
+           if(!otpVerified[email]){
+            console.log("Unproccessable entity.")
+            return res.status(422).json({
+                message:"Otp not verified."
+            })
+           }
+           const hashedPassword =  await bcrypt.hash(password,10);
+           await UserModel.create({
+            name:name,
+            email:email,
+            password:hashedPassword
+           });
+           delete(otpVerified[email]);
+           return res.status(200).json({
+            message:"Successfully Registered!"
+           })
+
+    }catch(error){
+        console.log(error)
+        return res.status(500).json({
+            message:"Unable to register."
         })
-      }
-   
-     res.status(200).json({
-        message:"Successfully registered!"
-     })}
-    catch(error){
-        console.log(error);
-     res.status(400).json({
-        message:"Error in registering."
-     })
     }
     
-   
  })
  app.post('/login',async(req,res)=>{
     const email=req.body.email;
