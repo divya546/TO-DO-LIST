@@ -17,18 +17,15 @@ const nodemailer=require('nodemailer');
 const { string } = require('zod/v4');
 mongoose.connect(process.env.MONGOOSE_URL);
 
-const transporter=nodemailer.createTransport({
-       service:"gmail",
-       auth: {
-        user:process.env.EMAIL_USER,
-        pass:process.env.EMAIL_PASS
-       },
-    tls: {
-        rejectUnauthorized: false // avoids SSL issues on some servers
-    }
+try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`OTP sent to ${email}: ${info.response}`);
+    return res.status(200).json({ message:"OTP Successfully sent!" });
+} catch(err) {
+    console.error("Error sending OTP:", err);
+    return res.status(500).json({ message:"Failed to send OTP. Check EMAIL_USER and EMAIL_PASS." });
+}
 
-
-})
 const otpVerified ={};
 const otpStore={};
 app.use(cors());
@@ -45,46 +42,49 @@ app.get("/", (req, res) => {
 
 
    
- app.post('/send-otp',(req,res)=>{
-    
+ app.post('/send-otp', async (req, res) => {
     const zmail = z.object({
-        email:z.string().email()
-    })
-  const resultantEmail = zmail.safeParse(req.body);
-  if(!resultantEmail.success){
-    return res.status(422).json({
-        message:"Invalid format",
-        error:resultantEmail.error
-    })
-  }
+        email: z.string().email()
+    });
 
-    if(!resultantEmail){
-        return res.status(404).json({
-            message:"Please enter the email."
-        })
+    const parsed = zmail.safeParse(req.body);
+    if (!parsed.success) {
+        return res.status(422).json({
+            message: "Invalid email format",
+            error: parsed.error.format()
+        });
     }
-    const otp =Math.floor(100000+Math.random()*900000);
-    const expiresAt = Date.now()+300000;
-    const email = resultantEmail.data.email;
-    otpStore[email]={otp,expiresAt};
-    const mailOptions={
-        from:process.env.EMAIL_USER,
-        
-        to:email,
-        subject:'Your OTP is:',
-        text: ` Your OTP code is ${otp}.Valid for only 5 minutes.`
-    }
-    transporter.sendMail(mailOptions,(err,info)=>{
-     if(err){
-        console.log(err);
+
+    const email = parsed.data.email;
+
+    // Generate 6-digit OTP and expiry time (5 minutes)
+    const otp = Math.floor(100000 + Math.random() * 900000);
+    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 mins
+    otpStore[email] = { otp, expiresAt };
+
+    // Nodemailer mail options
+    const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: 'Your OTP Code',
+        text: `Your OTP is ${otp}. It is valid for 5 minutes.`
+    };
+
+    try {
+        // Send email
+        const info = await transporter.sendMail(mailOptions);
+        console.log(`OTP sent to ${email}: ${info.response}`);
+        return res.status(200).json({
+            message: "OTP Successfully sent!"
+        });
+    } catch (err) {
+        console.error("Error sending OTP:", err);
         return res.status(500).json({
-            message:"Couldn't send message."
-        })
-     } return res.status(200).json({
-        message:"OTP Successfully sent!"
-     })
-    })
- })
+            message: "Failed to send OTP. Check EMAIL_USER and EMAIL_PASS in your .env"
+        });
+    }
+});
+
  app.post('/verify-otp',(req,res)=>{
     const email = req.body.email;
     const otp = req.body.otp;
