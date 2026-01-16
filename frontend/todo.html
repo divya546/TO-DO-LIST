@@ -22,6 +22,7 @@
 
 </body>
 <script>
+    const BASE_URL = window.location.origin;
     let isEditing = false;
     let editId= null;
     window.onload= function(){
@@ -30,7 +31,7 @@
             alert("Session expired, login again.")
             window.location.href="login.html";
         }
-        fetch("https://to-do-list-1-8smt.onrender.com/getTodo",{
+        fetch(`${BASE_URL}/getTodo`,{
             method:"GET",
             headers:{
                 'content-type':'application/json',
@@ -80,7 +81,7 @@
          alert("Please enter a valid todo.");
          return;
           }
-            fetch("https://to-do-list-1-8smt.onrender.com/edit",{
+            fetch(`${BASE_URL}/edit`,{
                 method:'PUT',
                 headers:{
                     'Content-type':'application/json',
@@ -114,7 +115,7 @@
                     return ;
         }
         
-        fetch("https://to-do-list-1-8smt.onrender.com/addToDo",{
+        fetch(`${BASE_URL}/addToDo`,{
             method:'POST',
             headers:{
               'Content-Type':'application/json',
@@ -177,7 +178,7 @@
         function deleteToDo(todoCounter,token){
             const todoToBeDeleted= document.getElementById(todoCounter);
             todoToBeDeleted.remove();
-            fetch("https://to-do-list-1-8smt.onrender.com/delete",{
+            fetch(`${BASE_URL}/delete`,{
                 method:"DELETE",
                 headers:{
                     'Content-type':'application/json',

@@ -36,6 +36,7 @@
     </div>
 </body>
 <script>
+    const BASE_URL = window.location.origin;
     const btn = document.getElementById("check-otp-button");
     const timer = document.getElementById("Mytimer");
     let setTimer;
@@ -64,7 +65,7 @@
     if(password !== confirmPass){
         return alert("confirm password does not match");
     }
-    fetch('https://to-do-list-1-8smt.onrender.com/register',{
+    fetch(`${BASE_URL}/register`,{
         method:'POST',
         headers:{
              'Content-Type':'application/json'
@@ -101,7 +102,7 @@
         if(!email.trim()){
            return alert("Please enter your email address.");
         }
-        fetch("https://to-do-list-1-8smt.onrender.com/send-otp",{
+        fetch(`${BASE_URL}/send-otp`,{
             method:'post',
             headers:{
                 'content-type':'application/json'
@@ -136,7 +137,7 @@
         if(!otp || !email){
             return alert("Please enter otp and Email.");
         }
-        fetch("https://to-do-list-1-8smt.onrender.com/verify-otp",{
+        fetch(`${BASE_URL}`,{
             method:'POST',
             headers:{
                 'content-type':'application/json'

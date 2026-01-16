@@ -301,17 +301,12 @@ app.use(express.static('frontend/signin'));
     }
     
 })
-const path = require("path");
+app.use(express.static("frontend/signin"));
 
+app.get("/", (req,res)=>{
+  res.sendFile(__dirname + "/frontend/signin/index.html")
+})
 
-
-// Serve frontend files
-app.use(express.static('frontend/signin'));
-
-// Catch-all route to serve index.html
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'frontend/signin/index.html'));
-});
 
  app.listen(3000,()=>{
     console.log("App is running on http://localhost:3000");

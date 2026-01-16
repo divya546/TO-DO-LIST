@@ -21,10 +21,11 @@
 </div>
 </body>
 <script>
+    const BASE_URL = window.location.origin;
  function login(){
     const email = document.getElementById("input-email").value;
     const password=document.getElementById("input-password").value;
-    fetch('https://to-do-list-1-8smt.onrender.com/login',{
+    fetch(`${BASE_URL}/login`,{
         method:'POST',
         headers:{
             'content-type':'application/json'
