@@ -30,7 +30,7 @@
         <div id="confirm-pass">Enter confirm passward</div>
         <div id="input-confirm-pass"><input id ="confirm" type="password" placeholder="Re-enter your passward"></div>
         <div id="sign-in-button"><button id ="sign-button" onclick="signin()" disabled>Sign IN</button></div>
-        <div id="already-sign-in">Already sign in? <a href="login.html">login</a></div>
+        <div id="already-sign-in">Already sign in? <a href="index.html">login</a></div>
     </div>
 
     </div>
@@ -64,7 +64,7 @@
     if(password !== confirmPass){
         return alert("confirm password does not match");
     }
-    fetch('http://localhost:3000/register',{
+    fetch('https://to-do-list-1-8smt.onrender.com/register',{
         method:'POST',
         headers:{
              'Content-Type':'application/json'
@@ -81,13 +81,13 @@
                 }else if(error.password){
                     document.getElementById("invalid-password").innerText= error.password[0];
                 }else{
-                    cosnoe.log(data.message);
+                    console.log(data.message);
                     alert("Unable to registered."); }
             }return;
          }
          console.log(data.message);
           if (data.message === "Successfully Registered!"){
-            window.location.href="login.html";
+            window.location.href="index.html";
           };
          
 
@@ -101,7 +101,7 @@
         if(!email.trim()){
            return alert("Please enter your email address.");
         }
-        fetch("http://localhost:3000/send-otp",{
+        fetch("https://to-do-list-1-8smt.onrender.com/send-otp",{
             method:'post',
             headers:{
                 'content-type':'application/json'
@@ -136,7 +136,7 @@
         if(!otp || !email){
             return alert("Please enter otp and Email.");
         }
-        fetch("http://localhost:3000/verify-otp",{
+        fetch("https://to-do-list-1-8smt.onrender.com/verify-otp",{
             method:'POST',
             headers:{
                 'content-type':'application/json'

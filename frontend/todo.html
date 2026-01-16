@@ -30,7 +30,7 @@
             alert("Session expired, login again.")
             window.location.href="login.html";
         }
-        fetch("http://localhost:3000/getTodo",{
+        fetch("https://to-do-list-1-8smt.onrender.com/getTodo",{
             method:"GET",
             headers:{
                 'content-type':'application/json',
@@ -80,7 +80,7 @@
          alert("Please enter a valid todo.");
          return;
           }
-            fetch("http://localhost:3000/edit",{
+            fetch("https://to-do-list-1-8smt.onrender.com/edit",{
                 method:'PUT',
                 headers:{
                     'Content-type':'application/json',
@@ -114,7 +114,7 @@
                     return ;
         }
         
-        fetch("http://localhost:3000/addToDo",{
+        fetch("https://to-do-list-1-8smt.onrender.com/addToDo",{
             method:'POST',
             headers:{
               'Content-Type':'application/json',
@@ -177,7 +177,7 @@
         function deleteToDo(todoCounter,token){
             const todoToBeDeleted= document.getElementById(todoCounter);
             todoToBeDeleted.remove();
-            fetch("http://localhost:3000/delete",{
+            fetch("https://to-do-list-1-8smt.onrender.com/delete",{
                 method:"DELETE",
                 headers:{
                     'Content-type':'application/json',

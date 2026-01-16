@@ -29,7 +29,7 @@ const otpVerified ={};
 const otpStore={};
 app.use(cors());
 app.use(express.json());
-app.use(express.static('signin'));
+app.use(express.static('frontend/signin'));
    
  app.post('/send-otp',(req,res)=>{
     
@@ -301,6 +301,16 @@ app.use(express.static('signin'));
     }
     
 })
+const path = require("path");
+
+// Serve frontend statically
+app.use(express.static(path.join(__dirname, "frontend/signin")));
+
+// Catch-all route to serve index.html for all unknown routes
+app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "frontend/signin", "index.html"));
+});
+
  app.listen(3000,()=>{
     console.log("App is running on http://localhost:3000");
  })
