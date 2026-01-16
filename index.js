@@ -1,324 +1,208 @@
 // backend of task manager
 const express = require('express');
-const fs = require('fs');
 const cors = require("cors");
-const mongoose= require("mongoose");
-const {UserModel,toDoModel}=require("./db");
-const { error } = require('console');
-const { parse } = require('path');
-const app = express();
+const mongoose = require("mongoose");
+const { UserModel, toDoModel } = require("./db");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
-const {z} = require("zod");
-
-require('dotenv').config();
-const JWT_SECRET= process.env.TOKEN;
-const nodemailer=require('nodemailer');
-const { string } = require('zod/v4');
-mongoose.connect(process.env.MONGOOSE_URL);
-
-try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`OTP sent to ${email}: ${info.response}`);
-    return res.status(200).json({ message:"OTP Successfully sent!" });
-} catch(err) {
-    console.error("Error sending OTP:", err);
-    return res.status(500).json({ message:"Failed to send OTP. Check EMAIL_USER and EMAIL_PASS." });
-}
-
-const otpVerified ={};
-const otpStore={};
-app.use(cors());
-app.use(express.json());
-app.use(express.static('frontend/signin'));
+const { z } = require("zod");
+const nodemailer = require('nodemailer');
 const path = require("path");
 
+require('dotenv').config();
+
+const app = express();
+const JWT_SECRET = process.env.TOKEN;
+
+mongoose.connect(process.env.MONGOOSE_URL)
+    .then(() => console.log("MongoDB connected"))
+    .catch(err => console.log("MongoDB connection error:", err));
+
+const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    },
+    tls: {
+        rejectUnauthorized: false
+    }
+});
+
+const otpVerified = {};
+const otpStore = {};
+
+app.use(cors());
+app.use(express.json());
 app.use(express.static(path.join(__dirname, "frontend")));
 
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "frontend/signin/index.html"));
+    res.sendFile(path.join(__dirname, "frontend/signin/index.html"));
 });
 
+// ================= SEND OTP =================
+app.post('/send-otp', async (req, res) => {
+    const zmail = z.object({ email: z.string().email() });
+    const parsedEmail = zmail.safeParse(req.body);
 
-
-   
- app.post('/send-otp', async (req, res) => {
-    const zmail = z.object({
-        email: z.string().email()
-    });
-
-    const parsed = zmail.safeParse(req.body);
-    if (!parsed.success) {
-        return res.status(422).json({
-            message: "Invalid email format",
-            error: parsed.error.format()
-        });
+    if (!parsedEmail.success) {
+        return res.status(422).json({ message: "Invalid email format", error: parsedEmail.error });
     }
 
-    const email = parsed.data.email;
-
-    // Generate 6-digit OTP and expiry time (5 minutes)
+    const email = parsedEmail.data.email;
     const otp = Math.floor(100000 + Math.random() * 900000);
-    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 mins
+    const expiresAt = Date.now() + 300000; // 5 minutes
     otpStore[email] = { otp, expiresAt };
 
-    // Nodemailer mail options
     const mailOptions = {
         from: process.env.EMAIL_USER,
         to: email,
-        subject: 'Your OTP Code',
-        text: `Your OTP is ${otp}. It is valid for 5 minutes.`
+        subject: 'Your OTP is:',
+        text: `Your OTP code is ${otp}. Valid for 5 minutes.`
     };
 
     try {
-        // Send email
         const info = await transporter.sendMail(mailOptions);
         console.log(`OTP sent to ${email}: ${info.response}`);
-        return res.status(200).json({
-            message: "OTP Successfully sent!"
-        });
+        return res.status(200).json({ message: "OTP Successfully sent!" });
     } catch (err) {
         console.error("Error sending OTP:", err);
-        return res.status(500).json({
-            message: "Failed to send OTP. Check EMAIL_USER and EMAIL_PASS in your .env"
-        });
+        return res.status(500).json({ message: "Failed to send OTP. Check EMAIL_USER and EMAIL_PASS." });
     }
 });
 
- app.post('/verify-otp',(req,res)=>{
-    const email = req.body.email;
-    const otp = req.body.otp;
-    if(!email || !otp){
-        return res.status(400).json({
-            message:"Email or Otp not found.Please enter email and otp"
-        })
-    }
-      otpVerified[email]= true;
-     const otpData = otpStore[email];
-     if(!otpData){
-        return res.status(400).json({
-            message:"OTP not found."
-        })
-     }
+// ================= VERIFY OTP =================
+app.post('/verify-otp', (req, res) => {
+    const { email, otp } = req.body;
+    if (!email || !otp) return res.status(400).json({ message: "Email and OTP required" });
 
-    if(Date.now()>otpData.expiresAt){
-        return res.status(400).json({
-            message:"OTP expired.Please ask for new one!"
-        })
-    }
-    if(otpData.otp != parseInt(otp)){
-        return res.status(400).json({
-            message:"Incorrect OTP."
-        })
-    } 
-    return res.status(200).json({
-        message:"OTP is correct"
-    })
+    const otpData = otpStore[email];
+    if (!otpData) return res.status(400).json({ message: "OTP not found. Request a new one." });
 
- })
- app.post('/register',async (req,res)=>{
-    const reqBody = z.object({
-        email:z.string().min(6).email().max(100),
-        password:z.string().min(6).max(50).regex(/[A-Z]/,"Password should have atleast one Capital letter").
-        regex(/[a-z]/,"Password should constain atleast one small character.").
-        regex(/[^A-Za-z0-9]/,"Password should conatoion atleast one special character"),
-        name:z.string().max(100)
+    if (Date.now() > otpData.expiresAt) return res.status(400).json({ message: "OTP expired. Request a new one." });
+    if (otpData.otp != parseInt(otp)) return res.status(400).json({ message: "Incorrect OTP." });
 
-    })
-    const parsedData = reqBody.safeParse(req.body);
-    if(!parsedData.success){
-        return res.status(400).json({
-            message:"Invalid format",
-            error: parsedData.error
-        })
-    }
-    const {name ,email,password} = parsedData.data;
-    try{
-           const user = await UserModel.findOne({
-            email:email
-           })
-           if(user){
-            return res.status(409).json({
-                message:"User already exists."
-            })
-           }
-           if(!otpVerified[email]){
-            console.log("Unproccessable entity.")
-            return res.status(422).json({
-                message:"Otp not verified."
-            })
-           }
-           const hashedPassword =  await bcrypt.hash(password,10);
-           await UserModel.create({
-            name:name,
-            email:email,
-            password:hashedPassword
-           });
-           delete(otpVerified[email]);
-           return res.status(200).json({
-            message:"Successfully Registered!"
-           })
+    otpVerified[email] = true;
+    return res.status(200).json({ message: "OTP is correct" });
+});
 
-    }catch(error){
-        console.log(error)
-        return res.status(500).json({
-            message:"Unable to register."
-        })
-    }
-    
- })
- app.post('/login',async(req,res)=>{
-    const email=req.body.email;
-    const password = req.body.password;
-    const user = await UserModel.findOne({
-        email:email,
-    })
-    const passwordMatched = await bcrypt.compare(password,user.password);
+// ================= REGISTER =================
+app.post('/register', async (req, res) => {
+    const schema = z.object({
+        name: z.string().max(100),
+        email: z.string().min(6).email().max(100),
+        password: z.string()
+            .min(6)
+            .max(50)
+            .regex(/[A-Z]/, "Password should have at least one uppercase letter")
+            .regex(/[a-z]/, "Password should have at least one lowercase letter")
+            .regex(/[^A-Za-z0-9]/, "Password should have at least one special character")
+    });
 
-    try{if(passwordMatched){
-        const token = jwt.sign({
-        id:user._id,
-        },JWT_SECRET);
-        res.status(200).json({
-            message:"Login Successfull",
-            token
-        })
-       }
-    else{
-        res.status(403).json({
-            message:"Incorrect credentials"
-        })
-    }}catch{
-        res.status(404).json({
-            message:"Login failed due to some issue."
-        })
-    }
-    
-    
- }
-)
- app.get("/getTodo",async(req,res)=>{
-    const rawtoken = req.headers['authorization'];
-    const token = rawtoken?.split(' ')[1];
-    if (!token) {
-    return res.status(401).json({ message: "JWT token not provided" });
-  }
-    try{
-    const decoded = jwt.verify(token,JWT_SECRET);
-    const user = await UserModel.findById(decoded.id);
-    if(user){
-        const todos = await toDoModel.find({
-           userId:user._id
-        })
-        if(todos.length>0){
-            res.status(200).json({
-                todos:todos
-            })
-        }else{
-            res.status(200).json({
-                message:"No todos found"
-            })
-        }
-    }}catch(error){
-        console.log(error);
-        res.status(404).json({
-            message:"Some error in fetching the data"
-        })
-    }
- })
- app.post('/addToDo',async(req,res)=>{
-    const {title} = req.body;
-    const rawtoken = req.headers['authorization'];
-     const token = rawtoken && rawtoken.startsWith("Bearer ") ? rawtoken.split(" ")[1] : rawtoken;
-     
-    let users;
-  
-  if(!token){
-    return res.status(400).json({
-        message:"No token provided. Login again!"
-    })
-  }
-  try{
-    const decoded = jwt.verify(token,JWT_SECRET);
-    if(decoded){
-        const todo =await toDoModel.create({
-              title:title,
-              done:false,
-              userId:decoded.id
-        })
-        res.status(200).json({
-            message:"Successfully added",
-            todo:todo
-            
-        })
-    }
-  }catch(error){
-    console.log(error);
-    res.status(400).json({
-        message:"Error in adding todos"
-    })
-  }
-  
-    
- })
- app.delete('/delete',async (req,res)=>{
-     const id= req.body.id;
-     const rawToken = req.headers['authorization'];
-     const token =rawToken && rawToken.startsWith('bearer ')?rawToken.split(" ")[1]:rawToken;
-    let decodedInfo;
-      try{
-        decodedInfo= jwt.verify(token,JWT_SECRET);
-   
-     if(decodedInfo){
-        await toDoModel.deleteOne({
-            _id:id,
-            userId:decodedInfo.id
-        })
-        return res.status(200).json({
-            message:"Todo deleted successfully"
-        })
-     }
-    }catch(err){
-        console.log(err);
-        return res.status(404).json({
-            message:"Error in deleting"
-        })
-    }
-     
- })
- app.put("/edit",async(req,res)=>{
-    const {title} = req.body;
-    const id = req.body.id;
-    const rawToken= req.headers['authorization'];
-    const token = rawToken && rawToken.toLowerCase().startsWith("bearer ")?rawToken.split(" ")[1]:rawToken;
-    if(!token){
-        return res.status(400).json({
-            message:"Token not found."
-        })
-    }
-    let decodedInfo;
-    decodedInfo= jwt.verify(token,JWT_SECRET)
-    try{
-        console.log("Edited is called")
-        await toDoModel.updateOne(
-           { userId:decodedInfo.id,},
-           { $set:{title:title}}
-        )
-      return res.status(200).json({
-        message:"Updated successfully"
-      })
+    const parsedData = schema.safeParse(req.body);
+    if (!parsedData.success) return res.status(400).json({ message: "Invalid format", error: parsedData.error });
 
-    }catch(error){
-        console.log(error);
-        return res.status(400).json({
-            message:"Error in updation."
-        })
+    const { name, email, password } = parsedData.data;
+
+    try {
+        const userExists = await UserModel.findOne({ email });
+        if (userExists) return res.status(409).json({ message: "User already exists." });
+        if (!otpVerified[email]) return res.status(422).json({ message: "OTP not verified." });
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        await UserModel.create({ name, email, password: hashedPassword });
+        delete otpVerified[email];
+
+        return res.status(200).json({ message: "Successfully Registered!" });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Unable to register." });
     }
-    
-})
+});
 
+// ================= LOGIN =================
+app.post('/login', async (req, res) => {
+    const { email, password } = req.body;
+    try {
+        const user = await UserModel.findOne({ email });
+        if (!user) return res.status(403).json({ message: "Incorrect credentials" });
 
+        const passwordMatched = await bcrypt.compare(password, user.password);
+        if (!passwordMatched) return res.status(403).json({ message: "Incorrect credentials" });
 
- app.listen(3000,()=>{
+        const token = jwt.sign({ id: user._id }, JWT_SECRET);
+        return res.status(200).json({ message: "Login Successful", token });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Login failed due to some issue." });
+    }
+});
+
+// ================= TODO ROUTES =================
+app.get("/getTodo", async (req, res) => {
+    const rawToken = req.headers['authorization'];
+    const token = rawToken?.split(' ')[1];
+    if (!token) return res.status(401).json({ message: "JWT token not provided" });
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const todos = await toDoModel.find({ userId: decoded.id });
+        if (todos.length > 0) return res.status(200).json({ todos });
+        return res.status(200).json({ message: "No todos found" });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Error fetching todos" });
+    }
+});
+
+app.post('/addToDo', async (req, res) => {
+    const { title } = req.body;
+    const rawToken = req.headers['authorization'];
+    const token = rawToken?.startsWith("Bearer ") ? rawToken.split(" ")[1] : rawToken;
+    if (!token) return res.status(400).json({ message: "No token provided. Login again!" });
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const todo = await toDoModel.create({ title, done: false, userId: decoded.id });
+        return res.status(200).json({ message: "Successfully added", todo });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Error adding todo" });
+    }
+});
+
+app.delete('/delete', async (req, res) => {
+    const { id } = req.body;
+    const rawToken = req.headers['authorization'];
+    const token = rawToken?.startsWith('Bearer ') ? rawToken.split(" ")[1] : rawToken;
+    if (!token) return res.status(400).json({ message: "Token not found." });
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        await toDoModel.deleteOne({ _id: id, userId: decoded.id });
+        return res.status(200).json({ message: "Todo deleted successfully" });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Error deleting todo" });
+    }
+});
+
+app.put("/edit", async (req, res) => {
+    const { id, title } = req.body;
+    const rawToken = req.headers['authorization'];
+    const token = rawToken?.startsWith("Bearer ") ? rawToken.split(" ")[1] : rawToken;
+    if (!token) return res.status(400).json({ message: "Token not found." });
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        await toDoModel.updateOne({ _id: id, userId: decoded.id }, { $set: { title } });
+        return res.status(200).json({ message: "Updated successfully" });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Error updating todo" });
+    }
+});
+
+app.listen(3000, () => {
     console.log("App is running on http://localhost:3000");
- })
+});
