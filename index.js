@@ -23,6 +23,10 @@ const transporter=nodemailer.createTransport({
         user:process.env.EMAIL_USER,
         pass:process.env.EMAIL_PASS
        },
+    tls: {
+        rejectUnauthorized: false // avoids SSL issues on some servers
+    }
+
 
 })
 const otpVerified ={};
@@ -65,6 +69,7 @@ app.get("/", (req, res) => {
     otpStore[email]={otp,expiresAt};
     const mailOptions={
         from:process.env.EMAIL_USER,
+        
         to:email,
         subject:'Your OTP is:',
         text: ` Your OTP code is ${otp}.Valid for only 5 minutes.`
