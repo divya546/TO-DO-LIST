@@ -137,14 +137,14 @@
         if(!otp || !email){
             return alert("Please enter otp and Email.");
         }
-        fetch(`${BASE_URL}`,{
+        fetch(`${BASE_URL}/verify-otp`,{
             method:'POST',
             headers:{
                 'content-type':'application/json'
             },
             body:JSON.stringify({email,otp})
         }).then(res=>res.json()).then(data=>{
-            if(data.message="OTP is correct"){
+            if(data.message=== "OTP is correct"){
             clearInterval(setTimer); // ✅ STOP THE TIMER here
             timer.innerText = "";
             document.getElementById("sign-button").disabled=false;
