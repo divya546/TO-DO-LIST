@@ -30,6 +30,10 @@ const otpStore={};
 app.use(cors());
 app.use(express.json());
 app.use(express.static('frontend/signin'));
+app.get("/", (req, res) => {
+  res.send("Backend working fine 🚀");
+});
+
    
  app.post('/send-otp',(req,res)=>{
     
