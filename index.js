@@ -30,9 +30,15 @@ const otpStore={};
 app.use(cors());
 app.use(express.json());
 app.use(express.static('frontend/signin'));
+const path = require("path");
+
+app.use(express.static(path.join(__dirname, "frontend")));
+
 app.get("/", (req, res) => {
-  res.send("Backend working fine 🚀");
+  res.sendFile(path.join(__dirname, "frontend/signin/index.html"));
 });
+
+
 
    
  app.post('/send-otp',(req,res)=>{
@@ -305,11 +311,7 @@ app.get("/", (req, res) => {
     }
     
 })
-app.use(express.static("frontend/signin"));
 
-app.get("/", (req,res)=>{
-  res.sendFile(__dirname + "/frontend/signin/index.html")
-})
 
 
  app.listen(3000,()=>{
