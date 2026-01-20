@@ -206,6 +206,16 @@ app.put("/edit", async (req, res) => {
         return res.status(500).json({ message: "Error updating todo" });
     }
 });
+// Global error handler - ADD THIS BEFORE app.listen()
+app.use((err, req, res, next) => {
+    console.error('Global error:', err);
+    res.status(500).json({ 
+        message: "Internal server error",
+        error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+});
+
+
 
 app.listen(3000, () => {
     console.log("App is running on http://localhost:3000");

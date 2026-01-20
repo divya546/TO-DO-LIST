@@ -40,139 +40,164 @@
     const btn = document.getElementById("check-otp-button");
     const timer = document.getElementById("Mytimer");
     let setTimer;
-    btn.disabled= true;
-  function signin(){
-     if (btn.disabled) return alert("Please verify OTP first!");
-    const name = document.getElementById("name-input").value;
-    const email = document.getElementById('email-input').value;
-   if(!(name.trim()) || !email){
-    return alert("Enter name and email.")
-   }
-    const password=document.getElementById('input-password').value;
-    document.getElementById("invalid-password").innerText="";
-    document.getElementById("invalid-email").innerText="";
-    document.getElementById("invalid-name").innerText="";
-    if(password.length < 8){
-    return alert("Password must be at least 8 characters.");
-}
-if(!/[A-Z]/.test(password)){
-    return alert("Password must contain at least one uppercase letter.");
-}
-if(!/[^A-Za-z0-9]/.test(password)){
-    return alert("Password must contain at least one special character.");
-}
+    btn.disabled = true;
 
-    const confirmPass=document.getElementById('confirm').value;
-    if(password !== confirmPass){
-        return alert("confirm password does not match");
-    }
-    fetch(`${BASE_URL}/register`,{
-        method:'POST',
-        headers:{
-             'Content-Type':'application/json'
-        },
-        body:JSON.stringify({name,email,password})
-    }).then(async(response)=>{
-    const data = await response.json();
-    if(response.status !== 200){
-        if(data.error){
-            // Handle Zod errors
-            if(data.error.issues){
-                data.error.issues.forEach(issue => {
-                    const field = issue.path[0];
-                    if(field === 'name') document.getElementById("invalid-name").innerText = issue.message;
-                    if(field === 'email') document.getElementById("invalid-email").innerText = issue.message;
-                    if(field === 'password') document.getElementById("invalid-password").innerText = issue.message;
-                });
-            }
-        } else {
-            // Handle other errors like "User already exists"
-            alert(data.message);
+    function signin() {
+        if (btn.disabled) return alert("Please verify OTP first!");
+        
+        const name = document.getElementById("name-input").value;
+        const email = document.getElementById('email-input').value;
+        
+        if (!(name.trim()) || !email) {
+            return alert("Enter name and email.");
         }
-        return;
-    }
-    // Success case
-    if(data.message === "Successfully Registered!"){
-        window.location.href = "index.html";
-    }
-})
-    
-        .catch(error=>alert(error));
-     }
-    document.getElementById("send-otp-button").addEventListener('click',()=>{
-        const email= document.getElementById('email-input').value;
-        if(!email.trim()){
-           return alert("Please enter your email address.");
+        
+        const password = document.getElementById('input-password').value;
+        document.getElementById("invalid-password").innerText = "";
+        document.getElementById("invalid-email").innerText = "";
+        document.getElementById("invalid-name").innerText = "";
+        
+        if (password.length < 8) {
+            return alert("Password must be at least 8 characters.");
         }
-        fetch(`${BASE_URL}/send-otp`,{
-            method:'post',
-            headers:{
-                'content-type':'application/json'
+        if (!/[A-Z]/.test(password)) {
+            return alert("Password must contain at least one uppercase letter.");
+        }
+        if (!/[^A-Za-z0-9]/.test(password)) {
+            return alert("Password must contain at least one special character.");
+        }
+
+        const confirmPass = document.getElementById('confirm').value;
+        if (password !== confirmPass) {
+            return alert("Confirm password does not match");
+        }
+        
+        fetch(`${BASE_URL}/register`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
             },
-            body:JSON.stringify({email:email})
-        }).then(async(response)=>{
+            body: JSON.stringify({name, email, password})
+        })
+        .then(async(response) => {
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('Server returned non-JSON response');
+            }
+            
             const data = await response.json();
-            if(response.status!= 200){
-                if(data.error){
-                    if(data.error.email){
-                        document.getElementById("invalid-email").innerText=data.error.email[0];
+            
+            if (response.status !== 200) {
+                if (data.error && data.error.issues) {
+                    data.error.issues.forEach(issue => {
+                        const field = issue.path[0];
+                        if (field === 'name') document.getElementById("invalid-name").innerText = issue.message;
+                        if (field === 'email') document.getElementById("invalid-email").innerText = issue.message;
+                        if (field === 'password') document.getElementById("invalid-password").innerText = issue.message;
+                    });
+                } else {
+                    alert(data.message || "Registration failed");
+                }
+                return;
+            }
+            
+            if (data.message === "Successfully Registered!") {
+                alert("Registration successful!");
+                window.location.href = "index.html";
+            }
+        })
+        .catch(error => {
+            console.error('Registration error:', error);
+            alert('Registration failed. Please try again.');
+        });
+    } // ✅ CLOSE signin() function HERE
+
+    // ✅ EVENT LISTENERS OUTSIDE signin() function
+    document.getElementById("send-otp-button").addEventListener('click', () => {
+        const email = document.getElementById('email-input').value;
+        if (!email.trim()) {
+            return alert("Please enter your email address.");
+        }
+        
+        fetch(`${BASE_URL}/send-otp`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({email: email})
+        })
+        .then(async(response) => {
+            const data = await response.json();
+            if (response.status !== 200) {
+                if (data.error) {
+                    if (data.error.issues) {
+                        data.error.issues.forEach(issue => {
+                            if (issue.path[0] === 'email') {
+                                document.getElementById("invalid-email").innerText = issue.message;
+                            }
+                        });
                     }
                 }
             }
             
             alert(data.message);
-            if(data.message == "OTP Successfully sent!"){
-            setTimerfunct();
+            if (data.message === "OTP Successfully sent!") {
+                setTimerfunct();
             }
-        }).catch(error=>{
-            alert("Failed to send otp");
-
-            console.error(error);
-        }).finally(()=>{
-           btn.disabled= false;
-           
         })
-    })
-    document.getElementById("check-otp-button").addEventListener('click',()=>{
+        .catch(error => {
+            alert("Failed to send OTP");
+            console.error(error);
+        })
+        .finally(() => {
+            btn.disabled = false;
+        });
+    });
+
+    document.getElementById("check-otp-button").addEventListener('click', () => {
         const email = document.getElementById('email-input').value;
         const otp = document.getElementById('otp-input').value;
-        if(!otp || !email){
-            return alert("Please enter otp and Email.");
+        
+        if (!otp || !email) {
+            return alert("Please enter OTP and Email.");
         }
-        fetch(`${BASE_URL}/verify-otp`,{
-            method:'POST',
-            headers:{
-                'content-type':'application/json'
+        
+        fetch(`${BASE_URL}/verify-otp`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
             },
-            body:JSON.stringify({email,otp})
-        }).then(res=>res.json()).then(data=>{
-            if(data.message=== "OTP is correct"){
-            clearInterval(setTimer); // ✅ STOP THE TIMER here
-            timer.innerText = "";
-            document.getElementById("sign-button").disabled=false;
-            // alert("OTP verified! You can now complete registration.");
-        }
-            return alert(data.message) // ✅ Optional: Clear timer text after successful OTP
-        }).catch(error=>{
-            alert("Please enter the valid otp");
-            console.error(error);
+            body: JSON.stringify({email, otp})
         })
-    })
-    function setTimerfunct(){
-        let time = 5*60;//in seconds
-        clearInterval(setTimer);
-        setTimer = setInterval(()=>{
-            if(time<=0){
-                timer.innerText="Otp is expired."
+        .then(res => res.json())
+        .then(data => {
+            if (data.message === "OTP is correct") {
                 clearInterval(setTimer);
+                timer.innerText = "";
+                document.getElementById("sign-button").disabled = false;
             }
-            else{
-                const min = Math.floor(time/60);
-                const sec =time%60;
-                timer.innerText=`Time left is ${min} : ${sec.toString().padStart(2,"0")}`;
+            alert(data.message);
+        })
+        .catch(error => {
+            alert("Please enter a valid OTP");
+            console.error(error);
+        });
+    });
+
+    function setTimerfunct() {
+        let time = 5 * 60; // in seconds
+        clearInterval(setTimer);
+        setTimer = setInterval(() => {
+            if (time <= 0) {
+                timer.innerText = "OTP is expired.";
+                clearInterval(setTimer);
+            } else {
+                const min = Math.floor(time / 60);
+                const sec = time % 60;
+                timer.innerText = `Time left is ${min}:${sec.toString().padStart(2, "0")}`;
                 time--;
             }
-        },1000);
-    };
+        }, 1000);
+    }
 </script>
 </html>
