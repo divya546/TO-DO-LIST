@@ -96,7 +96,7 @@ app.post('/register', async (req, res) => {
         name: z.string().max(100),
         email: z.string().min(6).email().max(100),
         password: z.string()
-            .min(6)
+            .min(8)
             .max(50)
             .regex(/[A-Z]/, "Password should have at least one uppercase letter")
             .regex(/[a-z]/, "Password should have at least one lowercase letter")

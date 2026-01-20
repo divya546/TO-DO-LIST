@@ -58,7 +58,7 @@
 if(!/[A-Z]/.test(password)){
     return alert("Password must contain at least one uppercase letter.");
 }
-if(!/[!@#$%^&*(),.?":{}|<>]/.test(password)){
+if(!/[^A-Za-z0-9]/.test(password)){
     return alert("Password must contain at least one special character.");
 }
 
@@ -73,28 +73,29 @@ if(!/[!@#$%^&*(),.?":{}|<>]/.test(password)){
         },
         body:JSON.stringify({name,email,password})
     }).then(async(response)=>{
-         const data =await response.json();
-         if(response.status != 200){
-            if(data.error){
-                if(data.error.name){
-                    document.getElementById("invalid-name").innerText = data.error.name[0];
-                }else if(data.error.email){
-                    document.getElementById("invalid-email").innerText= data.error.email[0];
-                }else if(data.error.password){
-                    document.getElementById("invalid-password").innerText= data.error.password[0];
-                }else{
-                    console.log(data.message);
-                    alert("Unable to registered."); }
-            }return;
-         }
-         console.log(data.message);
-          if (data.message === "Successfully Registered!"){
-            window.location.href="index.html";
-          };
-         
-
-
-    })
+    const data = await response.json();
+    if(response.status !== 200){
+        if(data.error){
+            // Handle Zod errors
+            if(data.error.issues){
+                data.error.issues.forEach(issue => {
+                    const field = issue.path[0];
+                    if(field === 'name') document.getElementById("invalid-name").innerText = issue.message;
+                    if(field === 'email') document.getElementById("invalid-email").innerText = issue.message;
+                    if(field === 'password') document.getElementById("invalid-password").innerText = issue.message;
+                });
+            }
+        } else {
+            // Handle other errors like "User already exists"
+            alert(data.message);
+        }
+        return;
+    }
+    // Success case
+    if(data.message === "Successfully Registered!"){
+        window.location.href = "index.html";
+    }
+})
     
         .catch(error=>alert(error));
      }

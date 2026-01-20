@@ -10,7 +10,7 @@ const user = new Schema({
     email:{type:String,unique:true},
     password:String,
     name:String,
-    todos:[{type:todo,ref:'todos'}]
+    todos:[{type:ObjectId,ref:'todos'}]
 })
 const otpSchema = new Schema({
     email: String,
