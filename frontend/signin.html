@@ -24,11 +24,11 @@
             <div id="check-button"><button id ="check-otp-button">Check</button></div>
             </div>
         <div id="Mytimer" style="font-weight: bold; color: red; margin-top: 10px;"></div>
-        <div id="enter-passward">Enter Passward</div>
-        <div id="input-pass"><input id="input-password" type="password" placeholder="set a passward eg.d34fghy6&$" required></div>
+        <div id="enter-passward">Enter Password</div>
+        <div id="input-pass"><input id="input-password" type="password" placeholder="set a password eg.d34fghy6&$" required></div>
         <div id="invalid-password" class = "error"></div>
-        <div id="confirm-pass">Enter confirm passward</div>
-        <div id="input-confirm-pass"><input id ="confirm" type="password" placeholder="Re-enter your passward"></div>
+        <div id="confirm-pass">Enter confirm password</div>
+        <div id="input-confirm-pass"><input id ="confirm" type="password" placeholder="Re-enter your password"></div>
         <div id="sign-in-button"><button id ="sign-button" onclick="signin()" disabled>Sign IN</button></div>
         <div id="already-sign-in">Already sign in? <a href="index.html">login</a></div>
     </div>
@@ -42,6 +42,7 @@
     let setTimer;
     btn.disabled= true;
   function signin(){
+     if (btn.disabled) return alert("Please verify OTP first!");
     const name = document.getElementById("name-input").value;
     const email = document.getElementById('email-input').value;
    if(!(name.trim()) || !email){
@@ -54,12 +55,12 @@
     if(password.length < 8){
     return alert("Password must be at least 8 characters.");
 }
-// if(!/[A-Z]/.test(password)){
-//     return alert("Password must contain at least one uppercase letter.");
-// }
-// if(!/[!@#$%^&*(),.?":{}|<>]/.test(password)){
-//     return alert("Password must contain at least one special character.");
-// }
+if(!/[A-Z]/.test(password)){
+    return alert("Password must contain at least one uppercase letter.");
+}
+if(!/[!@#$%^&*(),.?":{}|<>]/.test(password)){
+    return alert("Password must contain at least one special character.");
+}
 
     const confirmPass=document.getElementById('confirm').value;
     if(password !== confirmPass){
@@ -75,12 +76,12 @@
          const data =await response.json();
          if(response.status != 200){
             if(data.error){
-                if(error.name){
-                    document.getElementById("invalid-name").innerText = error.name[0];
-                }else if(error.email){
-                    document.getElementById("invalid-email").innerText= error.email[0];
-                }else if(error.password){
-                    document.getElementById("invalid-password").innerText= error.password[0];
+                if(data.error.name){
+                    document.getElementById("invalid-name").innerText = data.error.name[0];
+                }else if(data.error.email){
+                    document.getElementById("invalid-email").innerText= data.error.email[0];
+                }else if(data.error.password){
+                    document.getElementById("invalid-password").innerText= data.error.password[0];
                 }else{
                     console.log(data.message);
                     alert("Unable to registered."); }
@@ -148,6 +149,7 @@
             clearInterval(setTimer); // ✅ STOP THE TIMER here
             timer.innerText = "";
             document.getElementById("sign-button").disabled=false;
+            // alert("OTP verified! You can now complete registration.");
         }
             return alert(data.message) // ✅ Optional: Clear timer text after successful OTP
         }).catch(error=>{

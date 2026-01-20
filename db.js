@@ -12,10 +12,20 @@ const user = new Schema({
     name:String,
     todos:[{type:todo,ref:'todos'}]
 })
+const otpSchema = new Schema({
+    email: String,
+    otp: Number,
+    expiresAt: Date
+});
+
+const OTPModel = mongoose.model("otp", otpSchema);
+
 
 const UserModel=mongoose.model('users',user);
 const toDoModel = mongoose.model('todos',todo);
 module.exports={
     UserModel:UserModel,
-    toDoModel:toDoModel
+    toDoModel:toDoModel,
+    OTPModel:OTPModel
+
 }

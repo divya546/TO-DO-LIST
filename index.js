@@ -2,7 +2,8 @@
 const express = require('express');
 const cors = require("cors");
 const mongoose = require("mongoose");
-const { UserModel, toDoModel } = require("./db");
+const { UserModel, toDoModel, OTPModel } = require("./db");
+
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const { z } = require("zod");
@@ -29,8 +30,7 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-const otpVerified = {};
-const otpStore = {};
+
 
 app.use(cors());
 app.use(express.json());
@@ -52,7 +52,9 @@ app.post('/send-otp', async (req, res) => {
     const email = parsedEmail.data.email;
     const otp = Math.floor(100000 + Math.random() * 900000);
     const expiresAt = Date.now() + 300000; // 5 minutes
-    otpStore[email] = { otp, expiresAt };
+    await OTPModel.deleteMany({ email });
+    await OTPModel.create({ email, otp, expiresAt });
+
 
     const mailOptions = {
         from: process.env.EMAIL_USER,
@@ -72,17 +74,19 @@ app.post('/send-otp', async (req, res) => {
 });
 
 // ================= VERIFY OTP =================
-app.post('/verify-otp', (req, res) => {
+app.post('/verify-otp', async(req, res) => {
     const { email, otp } = req.body;
     if (!email || !otp) return res.status(400).json({ message: "Email and OTP required" });
 
-    const otpData = otpStore[email];
+    const otpData = await OTPModel.findOne({ email });
+
     if (!otpData) return res.status(400).json({ message: "OTP not found. Request a new one." });
 
     if (Date.now() > otpData.expiresAt) return res.status(400).json({ message: "OTP expired. Request a new one." });
     if (otpData.otp != parseInt(otp)) return res.status(400).json({ message: "Incorrect OTP." });
 
-    otpVerified[email] = true;
+    await OTPModel.deleteOne({ email });
+
     return res.status(200).json({ message: "OTP is correct" });
 });
 
@@ -107,11 +111,11 @@ app.post('/register', async (req, res) => {
     try {
         const userExists = await UserModel.findOne({ email });
         if (userExists) return res.status(409).json({ message: "User already exists." });
-        if (!otpVerified[email]) return res.status(422).json({ message: "OTP not verified." });
+        // if (!otpVerified[email]) return res.status(422).json({ message: "OTP not verified." });
 
         const hashedPassword = await bcrypt.hash(password, 10);
         await UserModel.create({ name, email, password: hashedPassword });
-        delete otpVerified[email];
+        // delete otpVerified[email];
 
         return res.status(200).json({ message: "Successfully Registered!" });
     } catch (err) {
