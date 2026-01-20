@@ -25,7 +25,7 @@
  function login(){
     const email = document.getElementById("input-email").value;
     const password=document.getElementById("input-password").value;
-    fetch(`${BASE_URL}/api/login`,{
+    fetch(`${BASE_URL}/login`,{
         method:'POST',
         headers:{
             'content-type':'application/json'
