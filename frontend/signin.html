@@ -54,12 +54,12 @@
     if(password.length < 8){
     return alert("Password must be at least 8 characters.");
 }
-// if(!/[A-Z]/.test(password)){
-//     return alert("Password must contain at least one uppercase letter.");
-// }
-// if(!/[!@#$%^&*(),.?":{}|<>]/.test(password)){
-//     return alert("Password must contain at least one special character.");
-// }
+if(!/[A-Z]/.test(password)){
+    return alert("Password must contain at least one uppercase letter.");
+}
+if(!/[!@#$%^&*(),.?":{}|<>]/.test(password)){
+    return alert("Password must contain at least one special character.");
+}
 
     const confirmPass=document.getElementById('confirm').value;
     if(password !== confirmPass){
@@ -75,12 +75,12 @@
          const data =await response.json();
          if(response.status != 200){
             if(data.error){
-                if(error.name){
-                    document.getElementById("invalid-name").innerText = error.name[0];
-                }else if(error.email){
-                    document.getElementById("invalid-email").innerText= error.email[0];
-                }else if(error.password){
-                    document.getElementById("invalid-password").innerText= error.password[0];
+                if(data.error.name){
+                    document.getElementById("invalid-name").innerText = data.error.name[0];
+                }else if(data.error.email){
+                    document.getElementById("invalid-email").innerText= data.error.email[0];
+                }else if(data.error.password){
+                    document.getElementById("invalid-password").innerText= data.error.password[0];
                 }else{
                     console.log(data.message);
                     alert("Unable to registered."); }
